@@ -26,10 +26,39 @@ class Config_Ui(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -56, 393, 580))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -56, 393, 620))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_12 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_12.setObjectName("verticalLayout_12")
+        
+        # AI配置组
+        self.ai_config = QtWidgets.QGroupBox(self.scrollAreaWidgetContents)
+        self.ai_config.setObjectName("ai_config")
+        self.verticalLayout_ai = QtWidgets.QVBoxLayout(self.ai_config)
+        self.verticalLayout_ai.setObjectName("verticalLayout_ai")
+        
+        # API Key配置
+        self.apikey_label = QtWidgets.QLabel(self.ai_config)
+        self.apikey_label.setObjectName("apikey_label")
+        self.verticalLayout_ai.addWidget(self.apikey_label)
+        
+        self.apikey_input = QtWidgets.QLineEdit(self.ai_config)
+        self.apikey_input.setObjectName("apikey_input")
+        self.apikey_input.setEchoMode(QtWidgets.QLineEdit.Password)  # 密码模式显示
+        self.verticalLayout_ai.addWidget(self.apikey_input)
+        
+        # Base URL配置
+        self.baseurl_label = QtWidgets.QLabel(self.ai_config)
+        self.baseurl_label.setObjectName("baseurl_label")
+        self.verticalLayout_ai.addWidget(self.baseurl_label)
+        
+        self.baseurl_input = QtWidgets.QLineEdit(self.ai_config)
+        self.baseurl_input.setObjectName("baseurl_input")
+        self.verticalLayout_ai.addWidget(self.baseurl_input)
+        
+        self.verticalLayout_12.addWidget(self.ai_config)
+        
+        # 原有的弹幕配置
         self.danmu_config = QtWidgets.QGroupBox(self.scrollAreaWidgetContents)
         self.danmu_config.setObjectName("danmu_config")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.danmu_config)
@@ -216,6 +245,14 @@ class Config_Ui(object):
             self.when_delay_time_2.setEnabled(False)
 
     def load_config(self, config):
+        # 加载AI配置
+        if "ai_config" in config:
+            self.apikey_input.setText(config["ai_config"].get("api_key", ""))
+            self.baseurl_input.setText(config["ai_config"].get("base_url", "https://api.deepseek.com"))
+        else:
+            self.apikey_input.setText("")
+            self.baseurl_input.setText("https://api.deepseek.com")
+            
         # 弹幕配置
         self.danmu_on.setChecked(config["auto_danmu"])
         self.danmu_spinBox.setValue(config["danmu_config"]["danmu_limit"])
@@ -240,6 +277,13 @@ class Config_Ui(object):
 
     def save_config(self, dialog):
         config = self.dialog_config
+        
+        # 保存AI配置
+        if "ai_config" not in config:
+            config["ai_config"] = {}
+        config["ai_config"]["api_key"] = self.apikey_input.text()
+        config["ai_config"]["base_url"] = self.baseurl_input.text()
+        
         # 弹幕配置
         config["auto_danmu"] = self.danmu_on.isChecked()
         config["danmu_config"]["danmu_limit"] = self.danmu_spinBox.value()
@@ -269,6 +313,13 @@ class Config_Ui(object):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "配置"))
+        
+        # AI配置翻译
+        self.ai_config.setTitle(_translate("Dialog", "AI配置"))
+        self.apikey_label.setText(_translate("Dialog", "API密钥"))
+        self.baseurl_label.setText(_translate("Dialog", "基础URL"))
+        
+        # 其他配置翻译
         self.danmu_config.setTitle(_translate("Dialog", "弹幕配置"))
         self.danmu_on.setText(_translate("Dialog", "启用自动发送弹幕"))
         self.label.setText(_translate("Dialog", "自动弹幕阈值（每分钟内收到n条弹幕后自动发送相同弹幕）"))

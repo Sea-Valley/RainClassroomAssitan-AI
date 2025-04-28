@@ -164,7 +164,7 @@ class MainWindow_Ui(QtCore.QObject):
         config_route = get_config_path()
         self.config = self.check_config(dir_route, config_route)
 
-        self.add_message_signal.emit("当前版本：v0.0.4",0)
+        self.add_message_signal.emit("当前版本：v2.0",0)
         self.add_message_signal.emit("初始化完成",0)
 
         # 登录状态检查

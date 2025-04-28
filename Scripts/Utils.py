@@ -93,6 +93,7 @@ def get_initial_data():
 def get_config_path():
     # 获取配置文件路径
     config_route = get_config_dir() + "\\config.json"
+    # print(config_route)
     return config_route
 
 def get_config_dir():

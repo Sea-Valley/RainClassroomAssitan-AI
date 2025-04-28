@@ -5,6 +5,7 @@ import time
 import websocket
 import json
 from Scripts.Utils import get_user_info, dict_result, calculate_waittime
+from Scripts.ai import ai_calc
 
 wss_url = "wss://www.yuketang.cn/wsapp/"
 class Lesson:
@@ -37,14 +38,14 @@ class Lesson:
         r = requests.get(url="https://www.yuketang.cn/api/v3/lesson/presentation/fetch?presentation_id=%s" % (presentationid),headers=self.headers,proxies={"http": None,"https":None})
         return dict_result(r.text)["data"]
 
-    def get_problems(self,presentationid):
+    def get_problems(self, presentationid):
         # 获取课程ppt中的题目
         data = self._get_ppt(presentationid)
         return [problem["problem"] for problem in data["slides"] if "problem" in problem.keys()]
 
     def answer_questions(self,problemid,problemtype,answer,limit):
         # 回答问题
-        if answer and problemtype != 3:
+        if answer and (problemtype == 1 or problemtype == 2 or problemtype == 3):
             wait_time = calculate_waittime(limit, self.config["answer_config"]["answer_delay"]["type"], self.config["answer_config"]["answer_delay"]["custom"]["time"])
             if wait_time != 0:
                 meg = "%s检测到问题，将在%s秒后自动回答，答案为%s" % (self.lessonname,wait_time,answer)
@@ -181,13 +182,7 @@ class Lesson:
                     # 如果该题已经作答过，直接跳出函数以忽略该题
                     # 该情况理论上只会出现在启动监听时
                     return
-                blanks = promble.get("blanks",[])
-                answers = []
-                if blanks:
-                    for i in blanks:
-                        answers.append(random.choice(i["answers"]))
-                else:
-                    answers = promble.get("answers",[])
+                answers = self.calculate_answers(promble)
                 threading.Thread(target=self.answer_questions,args=(promble["problemId"],promble["problemType"],answers,limit)).start()
                 break
         else:
@@ -250,6 +245,42 @@ class Lesson:
     def __eq__(self, other):
         return self.lessonid == other.lessonid
 
+    def calculate_answers(self, problem):
+        """
+        根据题目信息计算可能的答案
+        
+        参数:
+        problem (dict): 题目信息
+        
+        返回:
+        list: 计算出的可能答案
+        """
+        try:
+            # 使用extract_problem_info获取题目信息
+            problem_type, body, options = extract_problem_info({"problem": problem})
+            
+            # 记录日志，方便调试
+            meg = "%s正在计算题目答案，题目类型：%s，题干：%s" % (self.lessonname, problem_type, body[:30] + "..." if len(body) > 30 else body)
+            self.add_message(meg, 3)
+            # 如果获取到答案，记录日志
+            calculated_answers = []
+            if problem_type == 1 or problem_type == 2 or problem_type == 3 :
+                # 调用ai_calc函数获取答案
+                calculated_answers = ai_calc(problem_type, body, options)
+                meg = "%s计算得到答案：%s" % (self.lessonname, calculated_answers)
+                self.add_message(meg, 4)
+            else:
+                meg = "%s未能计算出答案" % self.lessonname
+                self.add_message(meg, 4)
+                
+            return calculated_answers
+            
+        except Exception as e:
+            # 捕获异常，防止程序崩溃
+            meg = "%s计算答案时出错：%s" % (self.lessonname, str(e))
+            self.add_message(meg, 4)
+            return []
+
 class User:
     def __init__(self, uid):
         self.uid = uid
@@ -259,3 +290,30 @@ class User:
         data = dict_result(r.text)["data"]
         self.sno = data["school_number"]
         self.name = data["name"]
+
+def extract_problem_info(problem_data):
+    """
+    从题目数据中提取问题类型、题干和选项
+    
+    参数:
+    problem_data (dict): 题目信息字典
+    
+    返回:
+    tuple: (problem_type, body, options)
+        - problem_type (int): 问题类型 (1:单选题, 2:多选题, 3:填空题等)
+        - body (str): 题目题干
+        - options (list): 选项列表，每个选项是一个字典，包含key和value
+    """
+    # 获取问题部分
+    problem = problem_data.get('problem', {})
+    
+    # 提取问题类型
+    problem_type = problem.get('problemType', 0)
+    
+    # 提取题干
+    body = problem.get('body', '')
+    
+    # 提取选项
+    options = problem.get('options', [])
+    
+    return problem_type, body, options
